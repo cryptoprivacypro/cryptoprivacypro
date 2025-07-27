@@ -9,19 +9,33 @@
     "lint": "next lint"
   },
   "dependencies": {
+    "@radix-ui/react-slot": "^1.2.3",
+    "@supabase/supabase-js": "^2.52.1",
+    "@tanstack/react-query": "^5.83.0",
+    "@wagmi/core": "^2.18.0",
+    "@web3modal/wagmi": "^5.1.11",
+    "class-variance-authority": "^0.7.1",
+    "clsx": "^2.1.1",
+    "framer-motion": "^12.23.9",
+    "lucide-react": "^0.526.0",
+    "next": "15.4.4",
+    "qrcode.react": "^4.2.0",
     "react": "19.1.0",
     "react-dom": "19.1.0",
-    "next": "15.4.4"
+    "tailwind-merge": "^3.3.1",
+    "viem": "^2.33.1",
+    "wagmi": "^2.16.0"
   },
   "devDependencies": {
-    "typescript": "^5",
+    "@eslint/eslintrc": "^3",
+    "@tailwindcss/postcss": "^4",
     "@types/node": "^20",
     "@types/react": "^19",
     "@types/react-dom": "^19",
-    "@tailwindcss/postcss": "^4",
-    "tailwindcss": "^4",
     "eslint": "^9",
     "eslint-config-next": "15.4.4",
-    "@eslint/eslintrc": "^3"
+    "tailwindcss": "^4",
+    "tw-animate-css": "^1.3.6",
+    "typescript": "^5"
   }
 }
