@@ -7,78 +7,61 @@ import { useAccount, useChainId, useSwitchChain, useSendTransaction } from "wagm
 import { Button } from "@/components/ui/button";
 import { QRCodeCanvas } from "qrcode.react";
 import { parseEther } from "viem";
+import Image from "next/image";
 import { supabase } from "@/lib/supabaseClient";
 
 const TEST_ENV = typeof window !== "undefined" && window.location.hostname === "localhost";
 
-// Translations for EN and JP
 const translations = {
   en: {
     headline: "Protect Your Crypto Privacy",
     subheadline: "Guides and tools for ultimate anonymity in the crypto world.",
     aboutTitle: "Available Guidelines",
-    aboutContent:
-      "Choose from our range of privacy guides designed to help you protect your wallets, stay anonymous, and avoid security pitfalls.",
-    cta: "Mint",
-    ctaMatic: "Mint (Polygon)",
     langSwitch: "日本語",
     walletConnect: "Connect Wallet",
-    manualPayment: "Manual Mint (QR)",
-    download: "Get Your Guide",
+    manualMint: "Manual Mint (QR)",
   },
   jp: {
     headline: "暗号資産のプライバシーを守る",
     subheadline: "究極の匿名性を実現するためのガイドとツール。",
     aboutTitle: "利用可能なガイドライン",
-    aboutContent:
-      "ウォレットの保護、匿名性の維持、セキュリティの落とし穴を回避するためのプライバシーガイドをお選びください。",
-    cta: "ミント",
-    ctaMatic: "ミント (Polygon)",
     langSwitch: "EN",
     walletConnect: "ウォレット接続",
-    manualPayment: "手動ミント (QR)",
-    download: "ガイドを取得",
+    manualMint: "手動ミント (QR)",
   },
 };
 
 export default function LandingPage() {
   const [lang, setLang] = useState("en");
-  const [qrVisible, setQrVisible] = useState(null); // Track which product ID shows QR code
-  const [showDownload, setShowDownload] = useState(null); // Track which product ID shows download button
+  const [qrVisible, setQrVisible] = useState(null);
   const [products, setProducts] = useState([]);
   const { open } = useWeb3Modal();
   const { address, isConnected } = useAccount();
   const chainId = useChainId();
   const { switchChain } = useSwitchChain();
-  const { sendTransaction, isSuccess } = useSendTransaction();
+  const { sendTransaction } = useSendTransaction();
   const t = translations[lang];
 
-  const paymentAddress = TEST_ENV ? "0x4fd0aF8c713A197f1558DDf2845182dC422606dC" : "0x4fd0aF8c713A197f1558DDf2845182dC422606dC";
+  // Wallet address (prod vs test)
+  const walletAddress = TEST_ENV
+    ? process.env.NEXT_PUBLIC_TEST_WALLET || "0xTestWalletAddress"
+    : process.env.NEXT_PUBLIC_WALLET_ADDRESS || "0x0000000000000000000000000000000000000000";
 
-  // If transaction is successful, allow download
-  useEffect(() => {
-    if (isSuccess && products.length > 0) {
-      setShowDownload(products[0].id);
-    }
-  }, [isSuccess, products]);
-
-  // Fetch all guides from Supabase
+  // Fetch products from Supabase
   useEffect(() => {
     const fetchProducts = async () => {
-      let { data, error } = await supabase
-        .from("products")
-        .select("*")
-        .eq("is_active", true)
-        .order("created_at", { ascending: true });
-
-      if (!error) setProducts(data);
-      else console.error("Error fetching products:", error);
+      const { data, error } = await supabase.from("products").select("*").eq("is_active", true);
+      if (error) {
+        console.error("Error fetching products:", error);
+      } else {
+        setProducts(data);
+      }
     };
     fetchProducts();
   }, []);
 
-  // Handle mint action
-  const handleMint = async (chain, amount, productId) => {
+  // Handle mint
+  const handleMint = async (product, chain, amount) => {
     if (!isConnected) {
       await open();
       return;
@@ -91,16 +74,12 @@ export default function LandingPage() {
         return;
       }
     }
-    sendTransaction?.({ to: paymentAddress, value: parseEther(amount.toString()) });
-    setShowDownload(productId);
+    sendTransaction?.({ to: walletAddress, value: parseEther(amount.toString()) });
   };
-
-  const commonBtnClasses =
-    "transition-colors duration-300 text-white hover:brightness-110 focus:ring-2 focus:ring-offset-1 focus:ring-offset-gray-800 focus:ring-white";
 
   return (
     <div className="relative min-h-screen text-white flex flex-col items-center justify-center p-6 bg-gradient-to-br from-black via-gray-900 to-purple-900">
-      {/* Background image */}
+      {/* Background hero image */}
       <img
         src="/images/hero.png"
         alt="Crypto Privacy Hero"
@@ -108,16 +87,16 @@ export default function LandingPage() {
       />
 
       <motion.div
-        initial={{ opacity: 0, y: 40 }}
+        initial={{ opacity: 0, y: 30 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.8 }}
-        className="relative z-10 max-w-3xl w-full bg-white/10 backdrop-blur-md shadow-lg rounded-3xl p-8 text-center"
+        className="relative z-10 max-w-6xl w-full bg-white/10 backdrop-blur-md shadow-lg rounded-3xl p-8 text-center"
       >
-        {/* Language switch & wallet connect */}
+        {/* Top controls */}
         <div className="flex justify-between items-center mb-4">
           <Button
             variant="outline"
-            className={`border-gray-400 bg-gray-700 hover:bg-gray-600 ${commonBtnClasses}`}
+            className="border-gray-400 text-gray-200 bg-black/40 hover:bg-gray-700"
             onClick={() => setLang(lang === "en" ? "jp" : "en")}
           >
             {t.langSwitch}
@@ -129,7 +108,7 @@ export default function LandingPage() {
           ) : (
             <Button
               variant="outline"
-              className={`border-gray-400 bg-gray-700 hover:bg-gray-600 ${commonBtnClasses}`}
+              className="border-gray-400 text-gray-200 bg-black/40 hover:bg-gray-700"
               onClick={() => open()}
             >
               {t.walletConnect}
@@ -143,69 +122,60 @@ export default function LandingPage() {
         </h1>
         <p className="text-lg text-gray-300 mb-6">{t.subheadline}</p>
 
-        {/* Display guidelines (products) */}
-        {products.length > 0 ? (
-          products.map((product) => (
-            <div key={product.id} className="mb-8 p-4 bg-black/40 rounded-lg">
-              <h2 className="text-2xl font-semibold mb-2">{product.title_en}</h2>
+        {/* Product cards */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+          {products.map((product) => (
+            <div
+              key={product.id}
+              className="flex flex-col items-center justify-between bg-black/50 p-4 rounded-2xl shadow-lg relative"
+            >
+              <h2 className="text-xl font-bold mb-2">{product.title_en}</h2>
               <p className="text-gray-300 text-sm mb-4">{product.description_en}</p>
-              <div className="flex flex-col sm:flex-row items-center justify-center gap-3 mb-4">
+
+              {/* Mint buttons */}
+              <div className="flex flex-col gap-3 w-full">
                 <Button
-                  className={`bg-teal-500 hover:bg-teal-600 ${commonBtnClasses}`}
-                  onClick={() => handleMint(1, product.mint_price_eth, product.id)}
+                  className="bg-teal-500 hover:bg-teal-600 w-full flex items-center justify-center gap-2"
+                  onClick={() => handleMint(product, 1, product.price_eth)}
                 >
-                  {t.cta} {product.mint_price_eth} ETH
+                  <Image src="/icons/eth.svg" alt="ETH" width={20} height={20} />
+                  Mint {product.price_eth} ETH
                 </Button>
                 <Button
-                  className={`bg-purple-600 hover:bg-purple-700 ${commonBtnClasses}`}
-                  onClick={() => handleMint(137, product.mint_price_matic, product.id)}
+                  className="bg-purple-600 hover:bg-purple-700 w-full flex items-center justify-center gap-2"
+                  onClick={() => handleMint(product, 137, product.price_matic)}
                 >
-                  {t.ctaMatic} {product.mint_price_matic} MATIC
+                  <Image src="/icons/pol.svg" alt="POL" width={20} height={20} />
+                  Mint {product.price_matic} POL
                 </Button>
                 <Button
                   variant="outline"
-                  className={`border-gray-400 bg-gray-700 hover:bg-gray-600 ${commonBtnClasses}`}
+                  className="border-gray-400 text-gray-200 w-full bg-black/40 hover:bg-gray-700"
                   onClick={() => setQrVisible(qrVisible === product.id ? null : product.id)}
                 >
-                  {t.manualPayment}
+                  {t.manualMint}
                 </Button>
               </div>
 
-              {/* QR code for this guide */}
+              {/* QR Code */}
               {qrVisible === product.id && (
-                <div className="p-4 bg-white rounded-lg inline-block mb-6">
-                  <QRCodeCanvas value={paymentAddress} size={128} />
-                  <p className="text-black text-sm mt-2">{paymentAddress}</p>
+                <div className="p-3 mt-4 bg-white rounded-lg shadow-md w-full">
+                  <QRCodeCanvas value={walletAddress} size={128} className="mx-auto" />
+                  <p className="text-black text-xs mt-2 break-words text-center">
+                    {walletAddress}
+                  </p>
                 </div>
               )}
-
-              {/* Download button after minting */}
-              {showDownload === product.id && (
-                <a
-                  href={product.file_url}
-                  className="px-6 py-3 bg-green-500 hover:bg-green-600 rounded-2xl text-white shadow-md"
-                  download
-                >
-                  {t.download}
-                </a>
-              )}
             </div>
-          ))
-        ) : (
-          <p className="text-gray-300 mb-6">Loading guidelines...</p>
-        )}
-
-        {/* About section */}
-        <div>
-          <h2 className="text-xl font-semibold mb-2">{t.aboutTitle}</h2>
-          <p className="text-gray-300 text-sm leading-relaxed">{t.aboutContent}</p>
+          ))}
         </div>
-      </motion.div>
 
-      {/* Footer */}
-      <footer className="relative z-10 mt-6 text-sm text-gray-400">
-        © 2025 CryptoPrivacy • <a href="#" className="underline">Privacy Policy</a>
-      </footer>
+        {/* Footer */}
+        <h2 className="text-2xl font-semibold mb-2">{t.aboutTitle}</h2>
+        <footer className="relative z-10 mt-4 text-sm text-gray-400">
+          © 2025 CryptoPrivacy • <a href="#" className="underline">Privacy Policy</a>
+        </footer>
+      </motion.div>
     </div>
   );
 }
